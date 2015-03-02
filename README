@@ -4,7 +4,6 @@ todo:
 	* highlight loudest triggers
 	* highlight triggers vetoed by clicked winner channel
 	* make summary table pretty (link with cis)
-	* add round winner under subheader
 	* Move style to appropriate CSS
 	* Add base OmegaScan directory link (if available)
 
