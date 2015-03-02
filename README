@@ -1,0 +1,7 @@
+
+todo:
+	* colorize winner triggers by snr
+	* highlight loudest triggers
+	* highlight triggers vetoed by clicked winner channel
+	* make summary table pretty (link with cis)
+	* add round winner under subheader
