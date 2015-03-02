@@ -130,13 +130,13 @@ function load_data(round, min_t, max_t) {
 				main.selectAll("g.scatter-dots-reference").selectAll("circle")
 					.transition()
 					.duration(200)
-					.style("opacity", .9);
+					.style("opacity", .1);
 		});
 		container.on("mouseout", function() {
 				main.selectAll("g.scatter-dots-reference").selectAll("circle")
 					.transition()
 					.duration(200)
-					.style("opacity", .1);
+					.style("opacity", .9);
 		});
 	});
 
