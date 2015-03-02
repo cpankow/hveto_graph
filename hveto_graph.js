@@ -5,12 +5,12 @@ function build_srclink(d, chan) {
 	return src;
 }
 
-function inner_box(d) {
+function inner_box(d, win_chan, ref_chan) {
 	var htmlstr = "GPS Time: " + d.time + "<br/>Freq.: " + d.frequency + "<br/>SNR: " + d.snr; 
-	ref_src = build_srclink(d, "L1:OAF-CAL_DARM_DQ");
-	targ_src = build_srclink(d, "L1:ASC-AS_B_RF36_I_YAW_OUT_DQ");
-	htmlstr += "<br/><b>L1:OAF-CAL_DARM_DQ:</b> <br/><img src='" + ref_src + "' width='200px' height='120px' /> <br/>";
-	htmlstr += "<br/><b>L1:ASC-AS_B_RF36_I_YAW_OUT_DQ</b> <br/><img src='" + targ_src + "' width='200px' height='120px' /> <br/>";
+	ref_src = build_srclink(d, ref_chan);
+	targ_src = build_srclink(d, win_chan);
+	htmlstr += "<br/><b>" + ref_chan + ":</b> <br/><img src='" + ref_src + "' width='200px' height='120px' /> <br/>";
+	htmlstr += "<br/><b>" + win_chan + ":</b> <br/><img src='" + targ_src + "' width='200px' height='120px' /> <br/>";
 	return htmlstr;
 }
 
@@ -20,7 +20,7 @@ function scatter_plot(data, main, x, y, left_marg, type) {
 			.attr("class", "scatter-dots-" + type);
 
 	dots = g.selectAll("scatter-dots-" + type)
-		.data(data)
+		.data(data["data"])
 		.enter().append("svg:circle")
 		.attr("cx", function (d) { return x(d.time); } )
 		.attr("cy", function (d) { return y(d.frequency); } )
@@ -32,7 +32,7 @@ function scatter_plot(data, main, x, y, left_marg, type) {
 				left_marg.transition()
 					.duration(200)
 					.style("opacity", 1.0);
-				left_marg.html(inner_box(d));
+				left_marg.html(inner_box(d, data["channel"], data["ref_channel"]));
 					//.style("left", (d3.event.pageX) + "px")
 					//.style("top", (d3.event.pageY - 28) + "px");
 			});
@@ -55,7 +55,6 @@ function construct_cis_link(channel) {
 }
 
 function construct_subheader(round, shead_obj) {
-	console.log(round)
 	shead_obj.append("div")
 		.attr("class", "round_name")
 		.style("font-size", "36pt")
@@ -140,15 +139,17 @@ function load_data(round, min_t, max_t) {
 
 	d3.tsv("L1-HVETO_VETOED_TRIGS_ROUND_" + round["round"] + "-1109116816-28800.tsv", function(error, data) {
 		// Draw some dots!
+		data = {"data": data, "channel": round["winner"], "ref_channel": round["ref_channel"]};
 		scatter_plot(data, main, x, y, left_marg, "reference");
 
-		// If we hover over the plot, make the reference triggers pop out again
+		// If we hover over the plot, make the reference triggers dim
 		container.on("mouseover", function() {
 				main.selectAll("g.scatter-dots-reference").selectAll("circle")
 					.transition()
 					.duration(200)
 					.style("opacity", .1);
 		});
+		// If we move out of the plot, make the reference triggers pop out again
 		container.on("mouseout", function() {
 				main.selectAll("g.scatter-dots-reference").selectAll("circle")
 					.transition()
@@ -158,6 +159,7 @@ function load_data(round, min_t, max_t) {
 	});
 
 	d3.tsv("L1-HVETO_WINNERS_TRIGS_LOUDEST_ROUND_1-1109116816-28800.tsv", function(error, data) {
+		data = {"data": data, "channel": round["winner"], "ref_channel": round["ref_channel"]};
 		scatter_plot(data, main, x, y, left_marg, "winner");
 	});
 
