@@ -49,9 +49,25 @@ function scatter_plot(data, main, x, y, left_marg, type) {
 
 }
 
+function construct_cis_link(channel) {
+	//return "https://cis.ligo.org/channel/"
+	return channel;
+}
+
+function construct_subheader(round, shead_obj) {
+	console.log(round)
+	shead_obj.append("div")
+		.attr("class", "round_name")
+		.style("font-size", "36pt")
+		.html("Round " + round["round"]);
+	shead_obj.append("div")
+		.attr("class", "round_info")
+		//.html("Winner: <a href='" + construct_cis_link(round['winner']) + "'>" + round["winner"] + "</a><br/>significance ")
+		.html("Winner: " + construct_cis_link(round['winner']) + "<br/>significance " + round['sig']);
+}
+
 function load_data(round, min_t, max_t) {
 			
-	round = round["round"];
 	// Scatter and left sidebar container
 	var container = d3.select("body").append("div")
 		.attr("class", "container");
@@ -60,10 +76,11 @@ function load_data(round, min_t, max_t) {
 		.attr("class", "sub_header")
 		.style("width", "100%")
 		.style("text-align", "right")
-		.style("border-bottom-width", "2px")
-		.style("border-bottom-style", "solid")
-		.style("font-size", "36pt")
-		.html("Round " + round);
+		.style("border-top-width", "2px")
+		.style("border-top-style", "solid");
+	// Add an anchor point
+	sub_header.html("<a name='round_" + round['round'] + "'></a>")
+	construct_subheader(round, sub_header);
 
 	var left_marg = container.append("div")
 		.attr("class", "tooltip")
@@ -121,7 +138,7 @@ function load_data(round, min_t, max_t) {
 		.attr('class', 'main axis date')
 		.call(yAxis);
 
-	d3.tsv("L1-HVETO_VETOED_TRIGS_ROUND_" + round + "-1109116816-28800.tsv", function(error, data) {
+	d3.tsv("L1-HVETO_VETOED_TRIGS_ROUND_" + round["round"] + "-1109116816-28800.tsv", function(error, data) {
 		// Draw some dots!
 		scatter_plot(data, main, x, y, left_marg, "reference");
 
@@ -144,7 +161,6 @@ function load_data(round, min_t, max_t) {
 		scatter_plot(data, main, x, y, left_marg, "winner");
 	});
 
-
 }
 
 header = d3.select("body").append("div")
@@ -156,7 +172,7 @@ d3.json("hveto.json", function(data) {
 		.data(data["rounds"])
 		.enter().append("p")
 			.html(function(d) {
-				return "Rounds " + d.round + ", winner: " + d.winner + " significance " + d.sig;
+				return "<a href='#round_" + d.round + "'>Round " + d.round + "</a>, winner: " + d.winner + " significance " + d.sig;
 			});
 
 	for (var i = 0; i < data["rounds"].length; i++) {
