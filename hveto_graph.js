@@ -9,8 +9,8 @@ function inner_box(d, win_chan, ref_chan) {
 	var htmlstr = "GPS Time: " + d.time + "<br/>Freq.: " + d.frequency + "<br/>SNR: " + d.snr; 
 	ref_src = build_srclink(d, ref_chan);
 	targ_src = build_srclink(d, win_chan);
-	htmlstr += "<br/><b>" + ref_chan + ":</b> <br/><img src='" + ref_src + "' width='200px' height='120px' /> <br/>";
-	htmlstr += "<br/><b>" + win_chan + ":</b> <br/><img src='" + targ_src + "' width='200px' height='120px' /> <br/>";
+	htmlstr += "<br/><b>" + ref_chan + ":</b> <br/> <a href='" + ref_src + "' target='_blank'><img src='" + ref_src + "' width='200px' height='120px' /></a> <br/>";
+	htmlstr += "<br/><b>" + win_chan + ":</b> <br/> <a href='" + targ_src + "' target='_blank'><img src='" + targ_src + "' width='200px' height='120px' /></a> <br/>";
 	return htmlstr;
 }
 
