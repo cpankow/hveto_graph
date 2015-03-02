@@ -158,7 +158,7 @@ function load_data(round, min_t, max_t) {
 		});
 	});
 
-	d3.tsv("L1-HVETO_WINNERS_TRIGS_LOUDEST_ROUND_1-1109116816-28800.tsv", function(error, data) {
+	d3.tsv("L1-HVETO_WINNERS_TRIGS_ROUND_" + round["round"] + "-1109116816-28800.tsv", function(error, data) {
 		data = {"data": data, "channel": round["winner"], "ref_channel": round["ref_channel"]};
 		scatter_plot(data, main, x, y, left_marg, "winner");
 	});
