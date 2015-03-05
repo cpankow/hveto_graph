@@ -5,6 +5,21 @@ function build_srclink(d, chan) {
 	return src;
 }
 
+function build_srclink_ldvw(d, chan) {
+	var src = "https://ligodv.areeda.com/ldvw/view?act=doplot&baseSelector=true&chanName=" + chan + "&strtTime=" + d.time + "&duration=20&doWplot=&embed&wplt_plttyp=spectrogram_whitened&wplt_plttimes=2&wplt_smplfrq=4096&wplt_pltfrq=0+inf&wplt_pltenergyrange=0.0+25.5&wplt_srchtime=64&wplt_srchfrqrng=0+inf&wplt_srchqrng=4.0+64.0";
+	return src;
+}
+
+function inner_box_ldvw(d, win_chan, ref_chan) {
+	var htmlstr = "GPS Time: " + d.time + "<br/>Freq.: " + d.frequency + "<br/>SNR: " + d.snr; 
+	ref_src = build_srclink_ldvw(d, ref_chan);
+	targ_src = build_srclink_ldvw(d, win_chan);
+	//htmlstr += "<br/><b>" + ref_chan + ":</b> <br/> <object data='" + ref_src + "' width='200px' height='120px'>Loading OmegaScan</object> <br/>";
+	htmlstr += "<br/><b>" + ref_chan + ":</b> <br/> <object data='" + ref_src + "'><param name='width' value='200px'> <param name='height' value='120px'></object> <br/>";
+	htmlstr += "<b>" + win_chan + ":</b> <br/> <object data='" + targ_src + "' width='200px' height='120px'>Loading OmegaScan</object>";
+	return htmlstr;
+}
+
 function inner_box(d, win_chan, ref_chan) {
 	var htmlstr = "GPS Time: " + d.time + "<br/>Freq.: " + d.frequency + "<br/>SNR: " + d.snr; 
 	ref_src = build_srclink(d, ref_chan);
@@ -14,7 +29,7 @@ function inner_box(d, win_chan, ref_chan) {
 	return htmlstr;
 }
 
-function scatter_plot(data, main, x, y, left_marg, type) {
+function scatter_plot(data, main, x, y, c, left_marg, type) {
 
 	var g = main.append("svg:g")
 			.attr("class", "scatter-dots-" + type);
@@ -26,13 +41,14 @@ function scatter_plot(data, main, x, y, left_marg, type) {
 		.attr("cy", function (d) { return y(d.frequency); } )
 		.attr("r", 2)
 	if (type == "winner") {
-			dots.attr("fill", "red")
+			dots.attr("fill", function(d) { return c(d.snr); })
 			dots.attr("zorder", 1)
 			.on("mouseup", function(d) {
 				left_marg.transition()
 					.duration(200)
 					.style("opacity", 1.0);
-				left_marg.html(inner_box(d, data["channel"], data["ref_channel"]));
+				//left_marg.html(inner_box(d, data["channel"], data["ref_channel"]));
+				left_marg.html(inner_box_ldvw(d, data["channel"], data["ref_channel"]));
 					//.style("left", (d3.event.pageX) + "px")
 					//.style("top", (d3.event.pageY - 28) + "px");
 			});
@@ -66,10 +82,15 @@ function construct_subheader(round, shead_obj) {
 }
 
 function load_data(round, min_t, max_t) {
+
+	var margin = {top: 20, right: 15, bottom: 60, left: 60}
+		, width = 960 - margin.left - margin.right
+		, height = 500 - margin.top - margin.bottom;
 			
 	// Scatter and left sidebar container
 	var container = d3.select("body").append("div")
-		.attr("class", "container");
+		.attr("class", "container")
+		.style("float", "left");
 
 	var sub_header = container.append("div")
 		.attr("class", "sub_header")
@@ -89,14 +110,12 @@ function load_data(round, min_t, max_t) {
 		.style("width", "300px")
 		.style("padding", "10px");
 	 
-	var margin = {top: 20, right: 15, bottom: 60, left: 60}
-		, width = 960 - margin.left - margin.right
-		, height = 500 - margin.top - margin.bottom;
-
 	var left_margin_size = 300;
 	var chart = container.append('div')
 			.attr("class", "scatterplot")
 			.style("padding-left", left_margin_size + "px")
+			.style("float", "left")
+			.style("clear", "both")
 		.append('svg:svg')
 			.attr('width', width + margin.right + margin.left)
 			.attr('height', height + margin.top + margin.bottom)
@@ -106,6 +125,7 @@ function load_data(round, min_t, max_t) {
 		.attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
 		.attr('width', width)
 		.attr('height', height)
+		.attr('float', 'left')
 		.attr('class', 'main');
 
 	var x = d3.scale.linear()
@@ -117,6 +137,10 @@ function load_data(round, min_t, max_t) {
 		.domain([ 10, 2048 ])
 		.range([ height, 0 ]);
 
+	var c = d3.scale.linear()
+		.domain([3,100])
+		.range(["blue", "red"]);
+
 	// draw the x axis
 	var xAxis = d3.svg.axis()
 		.scale(x)
@@ -126,6 +150,13 @@ function load_data(round, min_t, max_t) {
 		.attr('transform', 'translate(0,' + height + ')')
 		.attr('class', 'main axis date')
 		.call(xAxis);
+
+	chart.append('g').append("text")
+		.attr("class", "x_label")
+		.attr("text-anchor", "end")
+		.attr("x", width/2)
+		.attr("y", height + margin.top + margin.bottom / 2)
+		.text("gps time (s)");
 
 	// draw the y axis
 	var yAxis = d3.svg.axis()
@@ -137,10 +168,40 @@ function load_data(round, min_t, max_t) {
 		.attr('class', 'main axis date')
 		.call(yAxis);
 
+	chart.append('g').append("text")
+		.attr("class", "y_label")
+		.attr("text-anchor", "end")
+		.attr("transform", "rotate(270," + 10 + "," + height/2  + ")")
+		.attr("x", 10)
+		.attr("y", height/2)
+		.text("frequency (Hz)");
+
+	// draw color axis
+	var cAxis = Colorbar()
+		.scale(c)
+		.origin([0,0])
+		.thickness(10)
+		.barlength(400)
+		.orient("vertical")
+
+	cbart = container.append("svg")
+			.style("float", "left")
+			.style("height", height + margin.bottom)
+	cbart.append('g')
+			.attr('transform', 'translate(50,20)')
+			.call(cAxis);
+	cbart.append('g').append("text")
+		.attr("class", "c_label")
+		.attr("text-anchor", "end")
+		.attr("transform", "rotate(90," + 10 + "," + 50  + ")")
+		.attr("x", 10)
+		.attr("y", 50)
+		.text("SNR");
+
 	d3.tsv("L1-HVETO_VETOED_TRIGS_ROUND_" + round["round"] + "-1109116816-28800.tsv", function(error, data) {
 		// Draw some dots!
 		data = {"data": data, "channel": round["winner"], "ref_channel": round["ref_channel"]};
-		scatter_plot(data, main, x, y, left_marg, "reference");
+		scatter_plot(data, main, x, y, c, left_marg, "reference");
 
 		// If we hover over the plot, make the reference triggers dim
 		container.on("mouseover", function() {
@@ -160,7 +221,7 @@ function load_data(round, min_t, max_t) {
 
 	d3.tsv("L1-HVETO_WINNERS_TRIGS_ROUND_" + round["round"] + "-1109116816-28800.tsv", function(error, data) {
 		data = {"data": data, "channel": round["winner"], "ref_channel": round["ref_channel"]};
-		scatter_plot(data, main, x, y, left_marg, "winner");
+		scatter_plot(data, main, x, y, c, left_marg, "winner");
 	});
 
 }
@@ -168,6 +229,7 @@ function load_data(round, min_t, max_t) {
 header = d3.select("body").append("div")
 	.attr("class", "round_header")
 	.style("width", "100%")
+	.style("clear", "left")
 
 d3.json("hveto.json", function(data) {
 	header.selectAll("p")
