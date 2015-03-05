@@ -1,3 +1,19 @@
+
+/* Configuration object */
+CONFIG = {
+	// Base of the URL for the wscan object request
+	"wscan_base_url" : "https://ligodv.areeda.com/ldvw/",
+	// How opaque reference channel dots are when user is hovering
+	"active_opacity" : 0.1,
+	// How opaque reference channel dots are when user is not hovering
+	"inactive_opacity" : 0.9,
+	// SNR color bar range
+	"snr_range": [3, 100],
+	// SNR colors: need a color for each value in snr_range
+	"snr_colors": ["blue", "red"]
+};
+console.log(CONFIG);
+
 function build_srclink(d, chan) {
 	var src = "https://ldas-jobs.ligo-la.caltech.edu/~pankow/wdq/L1";
 	src += "_" + d.time + "/" + d.time;
@@ -6,7 +22,7 @@ function build_srclink(d, chan) {
 }
 
 function build_srclink_ldvw(d, chan) {
-	var src = "https://ligodv.areeda.com/ldvw/view?act=doplot&baseSelector=true&chanName=" + chan + "&strtTime=" + d.time + "&duration=20&doWplot=&embed&wplt_plttyp=spectrogram_whitened&wplt_plttimes=2&wplt_smplfrq=4096&wplt_pltfrq=0+inf&wplt_pltenergyrange=0.0+25.5&wplt_srchtime=64&wplt_srchfrqrng=0+inf&wplt_srchqrng=4.0+64.0";
+	var src = CONFIG.wscan_base_url + "view?act=doplot&baseSelector=true&chanName=" + chan + "&strtTime=" + d.time + "&duration=20&doWplot=&embed&wplt_plttyp=spectrogram_whitened&wplt_plttimes=2&wplt_smplfrq=4096&wplt_pltfrq=0+inf&wplt_pltenergyrange=0.0+25.5&wplt_srchtime=64&wplt_srchfrqrng=0+inf&wplt_srchqrng=4.0+64.0";
 	return src;
 }
 
@@ -60,16 +76,26 @@ function scatter_plot(data, main, x, y, c, left_marg, type) {
 		} else { // reference triggers
 			dots.attr("fill", "black")
 				.attr("zorder", -1)
-				.attr("opacity", 0.1)
+				.attr("opacity", CONFIG.active_opacity)
 		}
 
 }
 
+/*
+ * Retrieve a link to the channel description page on CIS.
+ * FIXME: Need to figure out how to link by channel name
+ * OR get the JSON for that request and parse it manually (ugh)
+ */
 function construct_cis_link(channel) {
 	//return "https://cis.ligo.org/channel/"
 	return channel;
 }
 
+/*
+ * Construct the round specific sub header with round indication and some
+ * information about the results of the round
+ * FIXME: Make more verbose
+ */
 function construct_subheader(round, shead_obj) {
 	shead_obj.append("div")
 		.attr("class", "round_name")
@@ -81,8 +107,14 @@ function construct_subheader(round, shead_obj) {
 		.html("Winner: " + construct_cis_link(round['winner']) + "<br/>significance " + round['sig']);
 }
 
+/*
+ * load_data is called for each round to create the data plotting area and
+ * set up the auto wscan sidebar
+ * FIXME: Static style should be moved to a CSS file
+ */
 function load_data(round, min_t, max_t) {
 
+	// Add some margins to the plotting area
 	var margin = {top: 20, right: 15, bottom: 60, left: 60}
 		, width = 960 - margin.left - margin.right
 		, height = 500 - margin.top - margin.bottom;
@@ -98,18 +130,20 @@ function load_data(round, min_t, max_t) {
 		.style("text-align", "right")
 		.style("border-top-width", "2px")
 		.style("border-top-style", "solid");
-	// Add an anchor point
+	// Add an anchor point for links from the top table
 	sub_header.html("<a name='round_" + round['round'] + "'></a>")
 	construct_subheader(round, sub_header);
 
+	// This is the left sidebar where event information and wscans appear
 	var left_marg = container.append("div")
-		.attr("class", "tooltip")
+		.attr("class", "sidebar")
 		.style("opacity", 0)
 		.style("position", "absolute")
 		.style("left", 0)
 		.style("width", "300px")
 		.style("padding", "10px");
 	 
+	// FIXME: Move this to config?
 	var left_margin_size = 300;
 	var chart = container.append('div')
 			.attr("class", "scatterplot")
@@ -121,6 +155,7 @@ function load_data(round, min_t, max_t) {
 			.attr('height', height + margin.top + margin.bottom)
 			.attr('class', 'chart');
 
+	// This is the main plot canvas
 	var main = chart.append('g')
 		.attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
 		.attr('width', width)
@@ -128,18 +163,21 @@ function load_data(round, min_t, max_t) {
 		.attr('float', 'left')
 		.attr('class', 'main');
 
+	// GPS Time scaling
 	var x = d3.scale.linear()
 		.domain([ min_t, max_t ])
 		.range([ 0, width ]);
 
+	// Frequency scaling
 	var y = d3.scale.log()
 		//.domain([0, d3.max(data, function(d) { return d.frequency; })])
 		.domain([ 10, 2048 ])
 		.range([ height, 0 ]);
 
+	// SNR colorbar scaling
 	var c = d3.scale.linear()
-		.domain([3,100])
-		.range(["blue", "red"]);
+		.domain(CONFIG.snr_range)
+		.range(CONFIG.snr_colors);
 
 	// draw the x axis
 	var xAxis = d3.svg.axis()
@@ -151,6 +189,7 @@ function load_data(round, min_t, max_t) {
 		.attr('class', 'main axis date')
 		.call(xAxis);
 
+	// x-axis label
 	chart.append('g').append("text")
 		.attr("class", "x_label")
 		.attr("text-anchor", "end")
@@ -168,9 +207,12 @@ function load_data(round, min_t, max_t) {
 		.attr('class', 'main axis date')
 		.call(yAxis);
 
+	// x-axis label
 	chart.append('g').append("text")
 		.attr("class", "y_label")
 		.attr("text-anchor", "end")
+		// rotate needs the point around which to rotate, hence the position of the
+		// object is given here
 		.attr("transform", "rotate(270," + 10 + "," + height/2  + ")")
 		.attr("x", 10)
 		.attr("y", height/2)
@@ -179,11 +221,12 @@ function load_data(round, min_t, max_t) {
 	// draw color axis
 	var cAxis = Colorbar()
 		.scale(c)
-		.origin([0,0])
+		.origin([0, 0])
 		.thickness(10)
 		.barlength(400)
 		.orient("vertical")
 
+	// colorbar label
 	cbart = container.append("svg")
 			.style("float", "left")
 			.style("height", height + margin.bottom)
@@ -208,14 +251,14 @@ function load_data(round, min_t, max_t) {
 				main.selectAll("g.scatter-dots-reference").selectAll("circle")
 					.transition()
 					.duration(200)
-					.style("opacity", .1);
+					.style("opacity", CONFIG.active_opacity);
 		});
 		// If we move out of the plot, make the reference triggers pop out again
 		container.on("mouseout", function() {
 				main.selectAll("g.scatter-dots-reference").selectAll("circle")
 					.transition()
 					.duration(200)
-					.style("opacity", .9);
+					.style("opacity", CONFIG.inactive_opacity);
 		});
 	});
 
@@ -226,12 +269,20 @@ function load_data(round, min_t, max_t) {
 
 }
 
+// Header contains succint round information
+// FIXME: More style!
 header = d3.select("body").append("div")
 	.attr("class", "round_header")
 	.style("width", "100%")
 	.style("clear", "left")
 
+/*
+ * hveto.json is where the round infomration is expected to be stored -- without
+ * it, none of this works. The trigger file information is inferred by the
+ * information stored in this file, so it must be accurate and complete
+ */
 d3.json("hveto.json", function(data) {
+	// Create an entry for this round in the header
 	header.selectAll("p")
 		.data(data["rounds"])
 		.enter().append("p")
@@ -239,6 +290,7 @@ d3.json("hveto.json", function(data) {
 				return "<a href='#round_" + d.round + "'>Round " + d.round + "</a>, winner: " + d.winner + " significance " + d.sig;
 			});
 
+	// Loop through the rounds and create a scatter plot section for each
 	for (var i = 0; i < data["rounds"].length; i++) {
 		round = data["rounds"][i];
 		load_data(round, data["gps_start"], data["gps_end"]);
