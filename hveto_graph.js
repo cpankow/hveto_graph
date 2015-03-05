@@ -15,6 +15,11 @@ CONFIG = {
 };
 console.log(CONFIG);
 
+/*
+ * Build a link to the wscan source image
+ * FIXME: This will be deprecated since its hardocded and we'll be using wscan
+ * on demand anyway
+ */
 function build_srclink(d, chan) {
 	var src = "https://ldas-jobs.ligo-la.caltech.edu/~pankow/wdq/L1";
 	src += "_" + d.time + "/" + d.time;
@@ -22,11 +27,21 @@ function build_srclink(d, chan) {
 	return src;
 }
 
+/*
+ * Build a link for an object tag to embed a LDVW wscan in the left sidebar
+ * FIXME: bad hardcoding! Need a JSON API.
+ */
 function build_srclink_ldvw(d, chan) {
 	var src = CONFIG.wscan_base_url + "view?act=doplot&baseSelector=true&chanName=" + chan + "&strtTime=" + d.time + "&duration=20&doWplot=&embed&wplt_plttyp=spectrogram_whitened&wplt_plttimes=2&wplt_smplfrq=4096&wplt_pltfrq=0+inf&wplt_pltenergyrange=0.0+25.5&wplt_srchtime=64&wplt_srchfrqrng=0+inf&wplt_srchqrng=4.0+64.0";
 	return src;
 }
 
+/*
+ * Construct the sidebar markup for a given round with winnning channel win_chan
+ * reference channel ref_chan and the data point (winner) d. For the LDVW case
+ * the requests are handled via an object tag within the sidebar which is only
+ * fired once the point is clicked on.
+ */
 function inner_box_ldvw(d, win_chan, ref_chan) {
 	var htmlstr = "GPS Time: " + d.time + "<br/>Freq.: " + d.frequency + "<br/>SNR: " + d.snr; 
 	ref_src = build_srclink_ldvw(d, ref_chan);
@@ -37,6 +52,12 @@ function inner_box_ldvw(d, win_chan, ref_chan) {
 	return htmlstr;
 }
 
+/*
+ * Construct the sidebar markup for a given round with winnning channel win_chan
+ * reference channel ref_chan and the data point (winner) d.
+ * FIXME: This is going away likely because it depends on hardcoded wscan
+ * locations
+ */
 function inner_box(d, win_chan, ref_chan) {
 	var htmlstr = "GPS Time: " + d.time + "<br/>Freq.: " + d.frequency + "<br/>SNR: " + d.snr; 
 	ref_src = build_srclink(d, ref_chan);
@@ -46,7 +67,17 @@ function inner_box(d, win_chan, ref_chan) {
 	return htmlstr;
 }
 
-function scatter_plot(data, main, x, y, c, left_marg, type) {
+/*
+ * Construct an SVG scatter plot given:
+ * data: data array with each element having time/frequency/SNR information
+ * x: D3js time scale
+ * y: D3js frequency scale
+ * c: D3js SNR scale (colorscale)
+ * sidebar:reference to sidebar object -- needed for mouse event binding
+ * type: 'reference' or 'winner': controls how the sidebar reacts to a given
+ * eventt
+ */
+function scatter_plot(data, main, x, y, c, sidebar, type) {
 
 	var g = main.append("svg:g")
 			.attr("class", "scatter-dots-" + type);
@@ -61,16 +92,16 @@ function scatter_plot(data, main, x, y, c, left_marg, type) {
 			dots.attr("fill", function(d) { return c(d.snr); })
 			dots.attr("zorder", 1)
 			.on("mouseup", function(d) {
-				left_marg.transition()
+				sidebar.transition()
 					.duration(200)
 					.style("opacity", 1.0);
-				//left_marg.html(inner_box(d, data["channel"], data["ref_channel"]));
-				left_marg.html(inner_box_ldvw(d, data["channel"], data["ref_channel"]));
+				//sidebar.html(inner_box(d, data["channel"], data["ref_channel"]));
+				sidebar.html(inner_box_ldvw(d, data["channel"], data["ref_channel"]));
 					//.style("left", (d3.event.pageX) + "px")
 					//.style("top", (d3.event.pageY - 28) + "px");
 			});
 			//.on("mouseout", function(d) {
-				//left_marg.transition()
+				//sidebar.transition()
 					//.duration(500)
 					//.style("opacity", 0);
 			//});
@@ -136,7 +167,7 @@ function load_data(round, min_t, max_t) {
 	construct_subheader(round, sub_header);
 
 	// This is the left sidebar where event information and wscans appear
-	var left_marg = container.append("div")
+	var sidebar = container.append("div")
 		.attr("class", "sidebar")
 		.style("opacity", 0)
 		.style("position", "absolute")
@@ -145,10 +176,10 @@ function load_data(round, min_t, max_t) {
 		.style("padding", "10px");
 	 
 	// FIXME: Move this to config?
-	var left_margin_size = 300;
+	var sidebar_size = 300;
 	var chart = container.append('div')
 			.attr("class", "scatterplot")
-			.style("padding-left", left_margin_size + "px")
+			.style("padding-left", sidebar_size + "px")
 			.style("float", "left")
 			.style("clear", "both")
 		.append('svg:svg')
@@ -225,7 +256,8 @@ function load_data(round, min_t, max_t) {
 		.origin([0, 0])
 		.thickness(10)
 		.barlength(400)
-		.orient("vertical")
+		.title("SNR")
+		.orient("vertical");
 
 	// colorbar label
 	cbart = container.append("svg")
@@ -245,7 +277,7 @@ function load_data(round, min_t, max_t) {
 	d3.tsv("L1-HVETO_VETOED_TRIGS_ROUND_" + round["round"] + "-1109116816-28800.tsv", function(error, data) {
 		// Draw some dots!
 		data = {"data": data, "channel": round["winner"], "ref_channel": round["ref_channel"]};
-		scatter_plot(data, main, x, y, c, left_marg, "reference");
+		scatter_plot(data, main, x, y, c, sidebar, "reference");
 
 		// If we hover over the plot, make the reference triggers dim
 		container.on("mouseover", function() {
@@ -265,7 +297,7 @@ function load_data(round, min_t, max_t) {
 
 	d3.tsv("L1-HVETO_WINNERS_TRIGS_ROUND_" + round["round"] + "-1109116816-28800.tsv", function(error, data) {
 		data = {"data": data, "channel": round["winner"], "ref_channel": round["ref_channel"]};
-		scatter_plot(data, main, x, y, c, left_marg, "winner");
+		scatter_plot(data, main, x, y, c, sidebar, "winner");
 	});
 
 }
